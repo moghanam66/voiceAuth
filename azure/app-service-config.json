@@ -1,0 +1,13 @@
+{
+    "version": "1.0",
+    "appSettings": {
+        "FLASK_ENV": "production",
+        "LOG_LEVEL": "INFO",
+        "LOG_FORMAT": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "PORT": "5000",
+        "WEBSITE_RUN_FROM_PACKAGE": "1"
+    },
+    "connectionStrings": {
+        "DefaultConnection": "YourConnectionStringHere"
+    }
+}
