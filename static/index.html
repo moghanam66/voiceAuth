@@ -721,7 +721,6 @@
                 const formData = new FormData();
                 formData.append('audio', convertedFile);
 
-            try {
                 const response = await fetch(`${API_BASE_URL}/enroll`, {
                     method: 'POST',
                     body: formData
@@ -735,7 +734,7 @@
                     result.innerHTML = `
                         <h3 style="margin-bottom: 15px;">✅ ${data.message}</h3>
                         <p>The CEO's voice has been successfully enrolled in the system.</p>
-                        <p>You can now use the "Process Audio" tab to verify speaker identity.</p>
+                        <p>You can now use the "Authenticate Voice" tab to verify speaker identity.</p>
                     `;
                 } else {
                     result.className = 'result error';
