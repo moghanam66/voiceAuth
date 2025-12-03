@@ -47,7 +47,7 @@ az webapp create `
   --resource-group $RESOURCE_GROUP `
   --plan "$APP_NAME-plan" `
   --name $APP_NAME `
-  --runtime "PYTHON:3.9"
+  --runtime "PYTHON:3.11"
 Write-Host ""
 
 # Configure app settings
@@ -71,7 +71,7 @@ Write-Host "Deploying code..."
 az webapp up `
   --resource-group $RESOURCE_GROUP `
   --name $APP_NAME `
-  --runtime "PYTHON:3.9" `
+  --runtime "PYTHON:3.11" `
   --sku $SKU
 Write-Host ""
 
