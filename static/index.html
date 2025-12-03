@@ -311,13 +311,12 @@
         <p class="subtitle">Speaker Verification & Identity Authentication</p>
 
         <div class="audio-format-info">
-            <h3>📋 Required Audio Format</h3>
+            <h3>📋 Audio Requirements</h3>
             <ul>
-                <li><strong>Format:</strong> WAV (uncompressed)</li>
-                <li><strong>Sample Rate:</strong> 16000 Hz (16 kHz)</li>
-                <li><strong>Channels:</strong> Mono (1 channel)</li>
-                <li><strong>Bit Depth:</strong> 16-bit PCM</li>
-                <li><strong>Duration:</strong> 3-10 seconds recommended</li>
+                <li><strong>Format:</strong> Any common audio format (WAV, MP3, M4A, etc.)</li>
+                <li><strong>Duration:</strong> 3-10 seconds of clear speech recommended</li>
+                <li><strong>Quality:</strong> Clear voice, minimal background noise</li>
+                <li><strong>Note:</strong> Audio will be automatically converted to required format</li>
             </ul>
         </div>
 
@@ -334,13 +333,22 @@
                     Upload an audio file to verify speaker identity
                 </p>
 
+                <div class="recording-controls">
+                    <button class="record-btn" id="processRecordBtn" onclick="toggleRecording('process')">
+                        🎤
+                    </button>
+                    <p style="margin-top: 15px; color: #666;">Click to record audio</p>
+                </div>
+
+                <p style="text-align: center; margin: 20px 0; color: #999;">— OR —</p>
+
                 <div class="upload-area" id="processUploadArea" onclick="document.getElementById('processFileInput').click()">
                     <div class="upload-icon">🎵</div>
                     <p style="font-size: 1.2em; margin-bottom: 10px;"><strong>Click to upload or drag and drop</strong></p>
-                    <p style="color: #666;">WAV files only (16kHz, mono, 16-bit)</p>
+                    <p style="color: #666;">Supports WAV, MP3, M4A, and other audio formats</p>
                 </div>
 
-                <input type="file" id="processFileInput" accept=".wav" onchange="handleProcessFile(this.files[0])">
+                <input type="file" id="processFileInput" accept="audio/*" onchange="handleProcessFile(this.files[0])">
 
                 <div class="file-info" id="processFileInfo"></div>
 
@@ -365,13 +373,22 @@
                     Upload a clear recording of the CEO's voice (3-10 seconds of speech)
                 </p>
 
+                <div class="recording-controls">
+                    <button class="record-btn" id="enrollRecordBtn" onclick="toggleRecording('enroll')">
+                        🎤
+                    </button>
+                    <p style="margin-top: 15px; color: #666;">Click to record audio</p>
+                </div>
+
+                <p style="text-align: center; margin: 20px 0; color: #999;">— OR —</p>
+
                 <div class="upload-area" id="enrollUploadArea" onclick="document.getElementById('enrollFileInput').click()">
                     <div class="upload-icon">🎙️</div>
                     <p style="font-size: 1.2em; margin-bottom: 10px;"><strong>Click to upload or drag and drop</strong></p>
-                    <p style="color: #666;">WAV files only (16kHz, mono, 16-bit)</p>
+                    <p style="color: #666;">Supports WAV, MP3, M4A, and other audio formats</p>
                 </div>
 
-                <input type="file" id="enrollFileInput" accept=".wav" onchange="handleEnrollFile(this.files[0])">
+                <input type="file" id="enrollFileInput" accept="audio/*" onchange="handleEnrollFile(this.files[0])">
 
                 <div class="file-info" id="enrollFileInfo"></div>
 
@@ -392,6 +409,10 @@
     <script>
         let processFile = null;
         let enrollFile = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentRecordingMode = null;
         const API_BASE_URL = window.location.origin;
 
         // Tab switching
@@ -442,13 +463,151 @@
             }
         });
 
+        // Recording functions
+        async function toggleRecording(mode) {
+            if (!isRecording) {
+                await startRecording(mode);
+            } else {
+                await stopRecording();
+            }
+        }
+
+        async function startRecording(mode) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                currentRecordingMode = mode;
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+                    
+                    if (currentRecordingMode === 'process') {
+                        handleProcessFile(audioFile);
+                    } else {
+                        handleEnrollFile(audioFile);
+                    }
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+
+                const btn = document.getElementById(`${mode}RecordBtn`);
+                btn.classList.add('recording');
+                btn.textContent = '⏹️';
+
+            } catch (error) {
+                alert('Microphone access denied or not available: ' + error.message);
+            }
+        }
+
+        async function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+
+                const btn = document.getElementById(`${currentRecordingMode}RecordBtn`);
+                btn.classList.remove('recording');
+                btn.textContent = '🎤';
+            }
+        }
+
+        // Audio conversion function
+        async function convertAudioToWav(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const arrayBuffer = e.target.result;
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        
+                        // Resample to 16kHz mono
+                        const targetSampleRate = 16000;
+                        const offlineContext = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
+                        const source = offlineContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(offlineContext.destination);
+                        source.start();
+                        
+                        const renderedBuffer = await offlineContext.startRendering();
+                        
+                        // Convert to WAV
+                        const wav = audioBufferToWav(renderedBuffer);
+                        const blob = new Blob([wav], { type: 'audio/wav' });
+                        const wavFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.wav'), { type: 'audio/wav' });
+                        
+                        resolve(wavFile);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Convert AudioBuffer to WAV format
+        function audioBufferToWav(buffer) {
+            const length = buffer.length * buffer.numberOfChannels * 2;
+            const arrayBuffer = new ArrayBuffer(44 + length);
+            const view = new DataView(arrayBuffer);
+            const channels = [];
+            let offset = 0;
+            let pos = 0;
+
+            // Write WAV header
+            setUint32(0x46464952); // "RIFF"
+            setUint32(36 + length); // file length - 8
+            setUint32(0x45564157); // "WAVE"
+            setUint32(0x20746d66); // "fmt " chunk
+            setUint32(16); // length = 16
+            setUint16(1); // PCM (uncompressed)
+            setUint16(buffer.numberOfChannels);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels); // avg. bytes/sec
+            setUint16(buffer.numberOfChannels * 2); // block-align
+            setUint16(16); // 16-bit
+            setUint32(0x61746164); // "data" chunk
+            setUint32(length);
+
+            // Write interleaved data
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (pos < buffer.length) {
+                for (let i = 0; i < buffer.numberOfChannels; i++) {
+                    let sample = Math.max(-1, Math.min(1, channels[i][pos]));
+                    sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    view.setInt16(44 + offset, sample, true);
+                    offset += 2;
+                }
+                pos++;
+            }
+
+            return arrayBuffer;
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+        }
+
         function handleProcessFile(file) {
             if (!file) return;
-            
-            if (!file.name.endsWith('.wav')) {
-                alert('Please select a WAV file');
-                return;
-            }
 
             processFile = file;
             const info = document.getElementById('processFileInfo');
@@ -463,11 +622,6 @@
 
         function handleEnrollFile(file) {
             if (!file) return;
-            
-            if (!file.name.endsWith('.wav')) {
-                alert('Please select a WAV file');
-                return;
-            }
 
             enrollFile = file;
             const info = document.getElementById('enrollFileInfo');
@@ -491,8 +645,14 @@
             loading.classList.add('active');
             result.style.display = 'none';
 
-            const formData = new FormData();
-            formData.append('audio', processFile);
+            try {
+                // Convert audio to 16kHz WAV
+                loading.querySelector('p').textContent = 'Converting audio...';
+                const convertedFile = await convertAudioToWav(processFile);
+                
+                loading.querySelector('p').textContent = 'Authenticating...';
+                const formData = new FormData();
+                formData.append('audio', convertedFile);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/authenticate`, {
@@ -535,8 +695,17 @@
                     <p>Failed to connect to API: ${error.message}</p>
                 `;
                 result.style.display = 'block';
+            } catch (conversionError) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">❌ Audio Conversion Error</h3>
+                    <p>${conversionError.message}</p>
+                `;
+                result.style.display = 'block';
             } finally {
                 btn.disabled = false;
+                loading.querySelector('p').textContent = 'Processing audio...';
             }
         }
 
@@ -551,8 +720,14 @@
             loading.classList.add('active');
             result.style.display = 'none';
 
-            const formData = new FormData();
-            formData.append('audio', enrollFile);
+            try {
+                // Convert audio to 16kHz WAV
+                loading.querySelector('p').textContent = 'Converting audio...';
+                const convertedFile = await convertAudioToWav(enrollFile);
+                
+                loading.querySelector('p').textContent = 'Enrolling voice...';
+                const formData = new FormData();
+                formData.append('audio', convertedFile);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/enroll`, {
@@ -587,8 +762,17 @@
                     <p>Failed to connect to API: ${error.message}</p>
                 `;
                 result.style.display = 'block';
+            } catch (conversionError) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">❌ Audio Conversion Error</h3>
+                    <p>${conversionError.message}</p>
+                `;
+                result.style.display = 'block';
             } finally {
                 btn.disabled = false;
+                loading.querySelector('p').textContent = 'Enrolling voice...';
             }
         }
 
