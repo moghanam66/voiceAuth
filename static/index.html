@@ -694,14 +694,6 @@
                     <p>${error.message || 'Failed to process audio'}</p>
                 `;
                 result.style.display = 'block';
-            } catch (error) {
-                loading.classList.remove('active');
-                result.className = 'result error';
-                result.innerHTML = `
-                    <h3 style="margin-bottom: 15px;">❌ Error</h3>
-                    <p>${error.message || 'Failed to process audio'}</p>
-                `;
-                result.style.display = 'block';
             } finally {
                 btn.disabled = false;
                 loading.querySelector('p').textContent = 'Processing audio...';
