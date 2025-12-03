@@ -156,11 +156,15 @@ def authenticate():
     Returns:
         JSON with authentication results
     """
-    if voice_authenticator is None:
-        return jsonify({'error': 'Voice authenticator not initialized'}), 503
-    
-    if not voice_authenticator.is_enrolled():
-        return jsonify({'error': 'CEO voice not enrolled. Use /enroll endpoint first.'}), 400
+    try:
+        if voice_authenticator is None:
+            return jsonify({'error': 'Voice authenticator not initialized'}), 503
+        
+        if not voice_authenticator.is_enrolled():
+            return jsonify({'error': 'CEO voice not enrolled. Use /enroll endpoint first.'}), 400
+    except Exception as e:
+        logger.error(f"Error checking authenticator: {e}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
     
     # Check if file uploaded
     if 'audio' not in request.files:
@@ -190,6 +194,8 @@ def authenticate():
         
     except Exception as e:
         logger.error(f"Error handling upload: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -286,21 +292,23 @@ def api_info():
     })
 
 
+# Initialize on module load (for Gunicorn)
+logger.info("=" * 80)
+logger.info("VOICE AUTHENTICATION API SERVER")
+logger.info("Authentication Only - No Wake Word Detection")
+logger.info("=" * 80)
+logger.info("Initializing voice authenticator...")
+try:
+    initialize_models()
+    logger.info("✓ Initialization complete")
+except Exception as e:
+    logger.error(f"✗ Initialization failed: {e}")
+    import traceback
+    traceback.print_exc()
+
+
 def main():
-    """Main entry point."""
-    logger.info("=" * 80)
-    logger.info("VOICE AUTHENTICATION API SERVER")
-    logger.info("Authentication Only - No Wake Word Detection")
-    logger.info("Optimized for Azure App Service")
-    logger.info("=" * 80)
-    logger.info("")
-    
-    # Initialize models
-    logger.info("Initializing voice authenticator...")
-    if not initialize_models():
-        logger.error("Failed to initialize. Exiting.")
-        sys.exit(1)
-    
+    """Main entry point for direct execution."""
     logger.info("")
     logger.info("=" * 80)
     logger.info("API ENDPOINTS:")
@@ -311,9 +319,8 @@ def main():
     logger.info("  POST /enroll        - Enroll CEO voice")
     logger.info("  GET  /api/info      - API information")
     logger.info("")
-    logger.info("Starting Flask server on http://0.0.0.0:5000")
+    logger.info("Starting Flask development server...")
     logger.info("=" * 80)
-    logger.info("")
     
     # Get port from environment (Azure sets this)
     port = int(os.environ.get('PORT', 5000))
