@@ -308,7 +308,7 @@
 <body>
     <div class="container">
         <h1>🎤 Voice Authentication System</h1>
-        <p class="subtitle">Wake Word Detection + Speaker Verification</p>
+        <p class="subtitle">Speaker Verification & Identity Authentication</p>
 
         <div class="audio-format-info">
             <h3>📋 Required Audio Format</h3>
@@ -322,16 +322,16 @@
         </div>
 
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('process')">Process Audio</button>
+            <button class="tab active" onclick="switchTab('process')">Authenticate Voice</button>
             <button class="tab" onclick="switchTab('enroll')">Enroll CEO Voice</button>
         </div>
 
         <!-- Process Audio Tab -->
         <div id="process-tab" class="tab-content active">
             <div class="section">
-                <h2>Process Audio File</h2>
+                <h2>Authenticate Speaker</h2>
                 <p style="margin-bottom: 20px; color: #666;">
-                    Upload an audio file to detect wake word and verify speaker identity
+                    Upload an audio file to verify speaker identity
                 </p>
 
                 <div class="upload-area" id="processUploadArea" onclick="document.getElementById('processFileInput').click()">
@@ -345,7 +345,7 @@
                 <div class="file-info" id="processFileInfo"></div>
 
                 <button class="btn" id="processBtn" onclick="processAudio()" disabled>
-                    🔍 Process Audio
+                    🔍 Authenticate Voice
                 </button>
 
                 <div class="loading" id="processLoading">
@@ -495,7 +495,7 @@
             formData.append('audio', processFile);
 
             try {
-                const response = await fetch(`${API_BASE_URL}/process_audio`, {
+                const response = await fetch(`${API_BASE_URL}/authenticate`, {
                     method: 'POST',
                     body: formData
                 });
@@ -506,14 +506,7 @@
                 if (response.ok) {
                     result.className = 'result success';
                     result.innerHTML = `
-                        <h3 style="margin-bottom: 15px;">✅ Processing Complete</h3>
-                        <div class="result-item">
-                            <strong>Transcribed Text:</strong> "${data.transcribed_text || 'N/A'}"
-                        </div>
-                        <div class="result-item">
-                            <strong>Wake Word Detected:</strong> 
-                            <span class="status-badge ${data.wake_word_detected}">${data.wake_word_detected ? '✓ YES' : '✗ NO'}</span>
-                        </div>
+                        <h3 style="margin-bottom: 15px;">✅ Authentication Complete</h3>
                         <div class="result-item">
                             <strong>Voice Authenticated:</strong> 
                             <span class="status-badge ${data.voice_authenticated}">${data.voice_authenticated ? '✓ AUTHORIZED' : '✗ UNAUTHORIZED'}</span>
