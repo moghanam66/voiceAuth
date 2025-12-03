@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Authentication System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+        }
+
+        .section h2::before {
+            content: '';
+            width: 5px;
+            height: 25px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9fa;
+        }
+
+        .upload-area.dragover {
+            background: #e7eaf6;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result.info {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+        }
+
+        .result-item strong {
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-badge.true {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-badge.false {
+            background: #dc3545;
+            color: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        .file-info p {
+            margin: 5px 0;
+            color: #495057;
+        }
+
+        .recording-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .record-btn {
+            background: #dc3545;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        .record-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .record-btn.recording {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .audio-format-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .audio-format-info h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .audio-format-info ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Authentication System</h1>
+        <p class="subtitle">Wake Word Detection + Speaker Verification</p>
+
+        <div class="audio-format-info">
+            <h3>📋 Required Audio Format</h3>
+            <ul>
+                <li><strong>Format:</strong> WAV (uncompressed)</li>
+                <li><strong>Sample Rate:</strong> 16000 Hz (16 kHz)</li>
+                <li><strong>Channels:</strong> Mono (1 channel)</li>
+                <li><strong>Bit Depth:</strong> 16-bit PCM</li>
+                <li><strong>Duration:</strong> 3-10 seconds recommended</li>
+            </ul>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('process')">Process Audio</button>
+            <button class="tab" onclick="switchTab('enroll')">Enroll CEO Voice</button>
+        </div>
+
+        <!-- Process Audio Tab -->
+        <div id="process-tab" class="tab-content active">
+            <div class="section">
+                <h2>Process Audio File</h2>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Upload an audio file to detect wake word and verify speaker identity
+                </p>
+
+                <div class="upload-area" id="processUploadArea" onclick="document.getElementById('processFileInput').click()">
+                    <div class="upload-icon">🎵</div>
+                    <p style="font-size: 1.2em; margin-bottom: 10px;"><strong>Click to upload or drag and drop</strong></p>
+                    <p style="color: #666;">WAV files only (16kHz, mono, 16-bit)</p>
+                </div>
+
+                <input type="file" id="processFileInput" accept=".wav" onchange="handleProcessFile(this.files[0])">
+
+                <div class="file-info" id="processFileInfo"></div>
+
+                <button class="btn" id="processBtn" onclick="processAudio()" disabled>
+                    🔍 Process Audio
+                </button>
+
+                <div class="loading" id="processLoading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px; color: #667eea; font-weight: bold;">Processing audio...</p>
+                </div>
+
+                <div class="result" id="processResult"></div>
+            </div>
+        </div>
+
+        <!-- Enroll CEO Tab -->
+        <div id="enroll-tab" class="tab-content">
+            <div class="section">
+                <h2>Enroll CEO Voice</h2>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Upload a clear recording of the CEO's voice (3-10 seconds of speech)
+                </p>
+
+                <div class="upload-area" id="enrollUploadArea" onclick="document.getElementById('enrollFileInput').click()">
+                    <div class="upload-icon">🎙️</div>
+                    <p style="font-size: 1.2em; margin-bottom: 10px;"><strong>Click to upload or drag and drop</strong></p>
+                    <p style="color: #666;">WAV files only (16kHz, mono, 16-bit)</p>
+                </div>
+
+                <input type="file" id="enrollFileInput" accept=".wav" onchange="handleEnrollFile(this.files[0])">
+
+                <div class="file-info" id="enrollFileInfo"></div>
+
+                <button class="btn" id="enrollBtn" onclick="enrollCEO()" disabled>
+                    ✅ Enroll CEO Voice
+                </button>
+
+                <div class="loading" id="enrollLoading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px; color: #667eea; font-weight: bold;">Enrolling voice...</p>
+                </div>
+
+                <div class="result" id="enrollResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let processFile = null;
+        let enrollFile = null;
+        const API_BASE_URL = window.location.origin;
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'process') {
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('process-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('enroll-tab').classList.add('active');
+            }
+        }
+
+        // Drag and drop for process
+        const processUploadArea = document.getElementById('processUploadArea');
+        processUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            processUploadArea.classList.add('dragover');
+        });
+        processUploadArea.addEventListener('dragleave', () => {
+            processUploadArea.classList.remove('dragover');
+        });
+        processUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            processUploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleProcessFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Drag and drop for enroll
+        const enrollUploadArea = document.getElementById('enrollUploadArea');
+        enrollUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            enrollUploadArea.classList.add('dragover');
+        });
+        enrollUploadArea.addEventListener('dragleave', () => {
+            enrollUploadArea.classList.remove('dragover');
+        });
+        enrollUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            enrollUploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleEnrollFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleProcessFile(file) {
+            if (!file) return;
+            
+            if (!file.name.endsWith('.wav')) {
+                alert('Please select a WAV file');
+                return;
+            }
+
+            processFile = file;
+            const info = document.getElementById('processFileInfo');
+            info.innerHTML = `
+                <p><strong>📁 File:</strong> ${file.name}</p>
+                <p><strong>📊 Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+            `;
+            info.classList.add('active');
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('processResult').style.display = 'none';
+        }
+
+        function handleEnrollFile(file) {
+            if (!file) return;
+            
+            if (!file.name.endsWith('.wav')) {
+                alert('Please select a WAV file');
+                return;
+            }
+
+            enrollFile = file;
+            const info = document.getElementById('enrollFileInfo');
+            info.innerHTML = `
+                <p><strong>📁 File:</strong> ${file.name}</p>
+                <p><strong>📊 Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+            `;
+            info.classList.add('active');
+            document.getElementById('enrollBtn').disabled = false;
+            document.getElementById('enrollResult').style.display = 'none';
+        }
+
+        async function processAudio() {
+            if (!processFile) return;
+
+            const btn = document.getElementById('processBtn');
+            const loading = document.getElementById('processLoading');
+            const result = document.getElementById('processResult');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            result.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('audio', processFile);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/process_audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                loading.classList.remove('active');
+
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h3 style="margin-bottom: 15px;">✅ Processing Complete</h3>
+                        <div class="result-item">
+                            <strong>Transcribed Text:</strong> "${data.transcribed_text || 'N/A'}"
+                        </div>
+                        <div class="result-item">
+                            <strong>Wake Word Detected:</strong> 
+                            <span class="status-badge ${data.wake_word_detected}">${data.wake_word_detected ? '✓ YES' : '✗ NO'}</span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Voice Authenticated:</strong> 
+                            <span class="status-badge ${data.voice_authenticated}">${data.voice_authenticated ? '✓ AUTHORIZED' : '✗ UNAUTHORIZED'}</span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Similarity Score:</strong> ${(data.similarity_score * 100).toFixed(2)}%
+                        </div>
+                        <div class="result-item">
+                            <strong>Audio Duration:</strong> ${data.audio_duration_seconds.toFixed(2)} seconds
+                        </div>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <h3 style="margin-bottom: 15px;">❌ Error</h3>
+                        <p>${data.error || 'Unknown error occurred'}</p>
+                    `;
+                }
+
+                result.style.display = 'block';
+            } catch (error) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">❌ Error</h3>
+                    <p>Failed to connect to API: ${error.message}</p>
+                `;
+                result.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function enrollCEO() {
+            if (!enrollFile) return;
+
+            const btn = document.getElementById('enrollBtn');
+            const loading = document.getElementById('enrollLoading');
+            const result = document.getElementById('enrollResult');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            result.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('audio', enrollFile);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/enroll`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                loading.classList.remove('active');
+
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h3 style="margin-bottom: 15px;">✅ ${data.message}</h3>
+                        <p>The CEO's voice has been successfully enrolled in the system.</p>
+                        <p>You can now use the "Process Audio" tab to verify speaker identity.</p>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <h3 style="margin-bottom: 15px;">❌ Enrollment Failed</h3>
+                        <p>${data.error || 'Unknown error occurred'}</p>
+                    `;
+                }
+
+                result.style.display = 'block';
+            } catch (error) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">❌ Error</h3>
+                    <p>Failed to connect to API: ${error.message}</p>
+                `;
+                result.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Check API health on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                console.log('API Health:', data);
+            } catch (error) {
+                console.error('API not reachable:', error);
+            }
+        });
+    </script>
+</body>
+</html>
