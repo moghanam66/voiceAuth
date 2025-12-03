@@ -1,30 +1,20 @@
 """
-Cloud-Ready REST API Server for Voice Authentication
-Accepts audio file uploads for wake word detection and voice authentication.
-No microphone/sounddevice required - works in Azure App Service.
+Simplified Voice Authentication API - Authentication Only (No Wake Word)
+Accepts audio file uploads for speaker verification only.
+Optimized for Azure App Service with minimal dependencies.
 """
 import os
 import sys
 import logging
 import tempfile
-import json
 import wave
 import numpy as np
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from vosk import Model, KaldiRecognizer
 
 import config
-
-# Try to import voice authenticator (requires torch/speechbrain)
-try:
-    from voice_authenticator import VoiceAuthenticator
-    VOICE_AUTH_AVAILABLE = True
-except ImportError:
-    VoiceAuthenticator = None
-    VOICE_AUTH_AVAILABLE = False
-    print("WARNING: Voice authentication not available (missing torch/speechbrain)")
+from voice_authenticator import VoiceAuthenticator
 
 
 # Setup logging
@@ -36,54 +26,26 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__, static_folder='static')
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 # Global components
-vosk_model = None
 voice_authenticator = None
-wake_phrases = [config.WAKE_PHRASE.lower()] + [p.lower() for p in config.ALTERNATIVE_WAKE_PHRASES]
 
 
 def initialize_models():
-    """Initialize Vosk and Voice Authenticator models."""
-    global vosk_model, voice_authenticator
+    """Initialize Voice Authenticator."""
+    global voice_authenticator
     
     try:
-        # Load Vosk model
-        if not config.VOSK_MODEL_PATH.exists():
-            logger.error(f"Vosk model not found at: {config.VOSK_MODEL_PATH}")
-            logger.info("Downloading Vosk model... (this may take a few minutes)")
-            # Auto-download if not present
-            try:
-                import download_vosk_model
-                download_vosk_model.download_model()
-            except Exception as e:
-                logger.error(f"Failed to download model: {e}")
-                return False
+        # Load voice authenticator
+        logger.info("Loading voice authenticator...")
+        voice_authenticator = VoiceAuthenticator()
         
-        logger.info(f"Loading Vosk model from: {config.VOSK_MODEL_PATH}")
-        vosk_model = Model(str(config.VOSK_MODEL_PATH))
-        logger.info("✓ Vosk model loaded")
-        
-        # Try to load voice authenticator (optional - may fail if torch/speechbrain not installed)
-        if VOICE_AUTH_AVAILABLE:
-            try:
-                logger.info("Loading voice authenticator...")
-                voice_authenticator = VoiceAuthenticator()
-                
-                if not voice_authenticator.is_enrolled():
-                    logger.warning("WARNING: CEO voice not enrolled!")
-                    logger.warning("Voice authentication will not work until CEO voice is enrolled.")
-                else:
-                    logger.info("✓ Voice authenticator loaded with CEO embedding")
-            except Exception as e:
-                logger.warning(f"⚠ Voice authenticator failed to load: {e}")
-                voice_authenticator = None
+        if not voice_authenticator.is_enrolled():
+            logger.warning("WARNING: CEO voice not enrolled!")
+            logger.warning("Voice authentication will not work until CEO voice is enrolled.")
         else:
-            logger.warning("⚠ Voice authentication disabled - missing dependencies (torch/speechbrain)")
-            logger.warning("  Wake word detection will work, but voice authentication won't.")
-            logger.warning("  To enable: pip install torch torchaudio speechbrain")
-            voice_authenticator = None
+            logger.info("✓ Voice authenticator loaded with CEO embedding")
         
         return True
         
@@ -94,39 +56,16 @@ def initialize_models():
         return False
 
 
-def check_for_wake_phrase(text: str) -> bool:
-    """Check if text contains wake phrase."""
-    text_lower = text.lower()
-    
-    # Fix common misrecognitions
-    text_lower = text_lower.replace('lasorda', 'sara')
-    text_lower = text_lower.replace('la sorda', 'sara')
-    text_lower = text_lower.replace('sarah', 'sara')
-    
-    # Check for wake phrases
-    for phrase in wake_phrases:
-        if phrase in text_lower:
-            return True
-    
-    # Fuzzy matching
-    if 'hello' in text_lower and 'sara' in text_lower:
-        return True
-    if 'hey' in text_lower and 'sara' in text_lower:
-        return True
-    
-    return False
-
-
 def process_audio_file(file_path: str, sample_rate: int = 16000):
     """
-    Process audio file for wake word detection and voice authentication.
+    Process audio file for voice authentication only.
     
     Args:
         file_path: Path to audio file (WAV format)
         sample_rate: Expected sample rate
         
     Returns:
-        dict with detection results
+        dict with authentication results
     """
     try:
         # Read WAV file
@@ -140,17 +79,6 @@ def process_audio_file(file_path: str, sample_rate: int = 16000):
             
             # Read all frames
             frames = wf.readframes(wf.getnframes())
-        
-        # Create recognizer
-        recognizer = KaldiRecognizer(vosk_model, sample_rate)
-        recognizer.SetWords(True)
-        
-        # Process audio
-        recognizer.AcceptWaveform(frames)
-        result = json.loads(recognizer.FinalResult())
-        
-        transcribed_text = result.get('text', '')
-        wake_word_detected = check_for_wake_phrase(transcribed_text)
         
         # Voice authentication
         voice_authenticated = False
@@ -171,8 +99,6 @@ def process_audio_file(file_path: str, sample_rate: int = 16000):
             similarity_score = similarity
         
         return {
-            'transcribed_text': transcribed_text,
-            'wake_word_detected': wake_word_detected,
             'voice_authenticated': voice_authenticated,
             'similarity_score': round(similarity_score, 4),
             'audio_duration_seconds': len(frames) / (sample_rate * 2)  # 2 bytes per sample
@@ -195,10 +121,10 @@ def index():
         return jsonify({
             'service': 'Voice Authentication API',
             'version': '1.0.0',
-            'message': 'Frontend not available. Use API endpoints directly.',
+            'message': 'Authentication Only - No Wake Word Detection',
             'endpoints': {
                 '/health': 'GET - Health check',
-                '/process_audio': 'POST - Process audio file',
+                '/authenticate': 'POST - Authenticate speaker',
                 '/enroll': 'POST - Enroll CEO voice'
             }
         })
@@ -207,30 +133,34 @@ def index():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
-    models_loaded = vosk_model is not None and voice_authenticator is not None
+    models_loaded = voice_authenticator is not None
     ceo_enrolled = voice_authenticator.is_enrolled() if voice_authenticator else False
     
     return jsonify({
         'status': 'healthy' if models_loaded else 'initializing',
         'models_loaded': models_loaded,
-        'ceo_enrolled': ceo_enrolled
+        'ceo_enrolled': ceo_enrolled,
+        'mode': 'authentication_only'
     })
 
 
-@app.route('/process_audio', methods=['POST'])
-def process_audio():
+@app.route('/authenticate', methods=['POST'])
+def authenticate():
     """
-    Process uploaded audio file for wake word detection and voice authentication.
+    Authenticate speaker from uploaded audio file.
     
     Expects:
         - Multipart form data with 'audio' file field
         - WAV format: 16kHz, mono, 16-bit PCM
         
     Returns:
-        JSON with detection results
+        JSON with authentication results
     """
-    if vosk_model is None or voice_authenticator is None:
-        return jsonify({'error': 'Models not initialized'}), 503
+    if voice_authenticator is None:
+        return jsonify({'error': 'Voice authenticator not initialized'}), 503
+    
+    if not voice_authenticator.is_enrolled():
+        return jsonify({'error': 'CEO voice not enrolled. Use /enroll endpoint first.'}), 400
     
     # Check if file uploaded
     if 'audio' not in request.files:
@@ -339,11 +269,12 @@ def api_info():
     return jsonify({
         'service': 'Voice Authentication API',
         'version': '1.0.0',
+        'mode': 'authentication_only',
         'endpoints': {
             '/': 'GET - Frontend interface',
             '/health': 'GET - Health check',
-            '/process_audio': 'POST - Process audio file (wake word + voice auth)',
-            '/enroll': 'POST - Enroll CEO voice from audio file',
+            '/authenticate': 'POST - Authenticate speaker',
+            '/enroll': 'POST - Enroll CEO voice',
             '/api/info': 'GET - API information'
         },
         'audio_format': {
@@ -358,15 +289,16 @@ def api_info():
 def main():
     """Main entry point."""
     logger.info("=" * 80)
-    logger.info("CLOUD VOICE AUTHENTICATION API SERVER")
-    logger.info("Optimized for Azure App Service Deployment")
+    logger.info("VOICE AUTHENTICATION API SERVER")
+    logger.info("Authentication Only - No Wake Word Detection")
+    logger.info("Optimized for Azure App Service")
     logger.info("=" * 80)
     logger.info("")
     
     # Initialize models
-    logger.info("Initializing models...")
+    logger.info("Initializing voice authenticator...")
     if not initialize_models():
-        logger.error("Failed to initialize models. Exiting.")
+        logger.error("Failed to initialize. Exiting.")
         sys.exit(1)
     
     logger.info("")
@@ -375,7 +307,7 @@ def main():
     logger.info("=" * 80)
     logger.info("  GET  /              - Frontend web interface")
     logger.info("  GET  /health        - Health check")
-    logger.info("  POST /process_audio - Process audio file")
+    logger.info("  POST /authenticate  - Authenticate speaker")
     logger.info("  POST /enroll        - Enroll CEO voice")
     logger.info("  GET  /api/info      - API information")
     logger.info("")
