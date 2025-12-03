@@ -95,8 +95,9 @@ def process_audio_file(file_path: str, sample_rate: int = 16000):
                 audio_float,
                 sample_rate=sample_rate
             )
-            voice_authenticated = is_ceo
-            similarity_score = similarity
+            # Convert numpy types to Python native types for JSON serialization
+            voice_authenticated = bool(is_ceo)
+            similarity_score = float(similarity)
         
         return {
             'voice_authenticated': voice_authenticated,
