@@ -27,12 +27,14 @@ ALTERNATIVE_WAKE_PHRASES = ["hey sara", "hello sarah"]
 SPEAKER_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
 
 # Voice Authentication Settings (Deep Learning SpeechBrain)
-VOICE_THRESHOLD = 0.30  # Similarity threshold for authentication
+VOICE_THRESHOLD = 0.55  # Similarity threshold for authentication - VERY STRICT
 # Recommended values for SpeechBrain ECAPA-TDNN:
-# 0.25 = Very strict (high security, may reject legitimate users)
-# 0.30 = Strict (recommended - good balance)
-# 0.35 = Balanced (more lenient)
-# 0.40 = Lenient (easier to authenticate, less secure)
+# 0.55 = VERY STRICT (maximum security, only very close matches pass)
+# 0.50 = Extremely strict (high security)
+# 0.45 = Very strict (tight security)
+# 0.40 = Strict (good security)
+# 0.35 = Balanced
+# 0.30 = Lenient (original setting)
 
 # Logging
 LOG_LEVEL = "INFO"
