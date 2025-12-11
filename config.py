@@ -27,7 +27,7 @@ ALTERNATIVE_WAKE_PHRASES = ["hey sara", "hello sarah"]
 SPEAKER_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
 
 # Voice Authentication Settings (Enhanced MFCC + Spectral Features)
-VOICE_THRESHOLD = 0.85  # Similarity threshold for authentication - VERY STRICT
+VOICE_THRESHOLD = 0.89  # Similarity threshold for authentication - EXTREMELY STRICT
 # Recommended values for MFCC + Spectral approach:
 # 0.85 = VERY STRICT (maximum security, only very close matches pass)
 # 0.80 = Extremely strict (high security)
