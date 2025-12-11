@@ -14,7 +14,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import config
-from voice_authenticator_deep import VoiceAuthenticator
+from voice_authenticator_lite import VoiceAuthenticator
 
 
 # Setup logging
