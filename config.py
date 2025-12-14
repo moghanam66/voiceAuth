@@ -26,15 +26,15 @@ ALTERNATIVE_WAKE_PHRASES = ["hey sara", "hello sarah"]
 # SpeechBrain model
 SPEAKER_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
 
-# Voice Authentication Settings (Enhanced MFCC + Spectral Features)
-VOICE_THRESHOLD = 0.89  # Similarity threshold for authentication - EXTREMELY STRICT
-# Recommended values for MFCC + Spectral approach:
-# 0.85 = VERY STRICT (maximum security, only very close matches pass)
-# 0.80 = Extremely strict (high security)
-# 0.75 = Very strict (tight security)
-# 0.70 = Strict (good security)
-# 0.65 = Balanced
-# 0.60 = Lenient
+# Voice Authentication Settings (pyannote.audio)
+VOICE_THRESHOLD = 0.70  # Similarity threshold for authentication - VERY STRICT
+# Recommended values for pyannote.audio embeddings:
+# 0.75 = EXTREMELY STRICT (maximum security, only near-perfect matches)
+# 0.70 = VERY STRICT (high security, recommended)
+# 0.65 = Strict (good security)
+# 0.60 = Balanced (moderate security)
+# 0.55 = Lenient (easier to authenticate)
+# 0.50 = Very lenient (low security)
 
 # Logging
 LOG_LEVEL = "INFO"
