@@ -208,7 +208,7 @@ def enroll_ceo():
     Expects:
         - Multipart form data with 'audio' file field
         - WAV format: 16kHz, mono, 16-bit PCM
-        - At least 3-5 seconds of clear speech
+        - At least 3 minutes of clear speech
         
     Returns:
         JSON with enrollment status
