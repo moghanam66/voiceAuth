@@ -9,13 +9,12 @@ import logging
 import tempfile
 import wave
 import numpy as np
-import torch
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import config
-from voice_authenticator_pyannote import VoiceAuthenticator
+from voice_authenticator_lite import VoiceAuthenticator
 
 
 # Setup logging
@@ -90,12 +89,10 @@ def process_audio_file(file_path: str, sample_rate: int = 16000):
             audio_array = np.frombuffer(frames, dtype=np.int16)
             # Convert to float32 for voice authentication
             audio_float = audio_array.astype(np.float32) / 32768.0
-            # Convert to torch tensor (1, samples) format expected by pyannote
-            audio_tensor = torch.from_numpy(audio_float).unsqueeze(0)
             
             # Verify speaker
             is_ceo, similarity = voice_authenticator.verify_speaker(
-                audio_tensor,
+                audio_float,
                 sample_rate=sample_rate
             )
             # Convert numpy types to Python native types for JSON serialization
@@ -251,11 +248,9 @@ def enroll_ceo():
         # Convert to numpy array
         audio_array = np.frombuffer(frames, dtype=np.int16)
         audio_float = audio_array.astype(np.float32) / 32768.0
-        # Convert to torch tensor (1, samples) format expected by pyannote
-        audio_tensor = torch.from_numpy(audio_float).unsqueeze(0)
         
         # Enroll
-        success = voice_authenticator.enroll_speaker(audio_tensor, sample_rate=16000)
+        success = voice_authenticator.enroll_speaker(audio_float, sample_rate=16000)
         
         # Clean up
         os.unlink(temp_path)
