@@ -27,7 +27,7 @@ ALTERNATIVE_WAKE_PHRASES = ["hey sara", "hello sarah"]
 SPEAKER_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
 
 # Voice Authentication Settings (pyannote.audio)
-VOICE_THRESHOLD = 0.70  # Similarity threshold for authentication - VERY STRICT
+VOICE_THRESHOLD = 0.92  # Similarity threshold for authentication - EXTREMELY STRICT
 # Recommended values for pyannote.audio embeddings:
 # 0.75 = EXTREMELY STRICT (maximum security, only near-perfect matches)
 # 0.70 = VERY STRICT (high security, recommended)
