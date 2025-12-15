@@ -49,21 +49,44 @@ class VoiceAuthenticator:
     def _load_ceo_embedding(self):
         """Load CEO voice embedding from disk."""
         try:
-            with open(self.ceo_embedding_path, 'rb') as f:
-                self.ceo_embedding = pickle.load(f)
-            logger.info(f"Loaded CEO embedding from {self.ceo_embedding_path}")
+            # Force fresh read - clear any cached file handle
+            if self.ceo_embedding_path.exists():
+                with open(self.ceo_embedding_path, 'rb') as f:
+                    self.ceo_embedding = pickle.load(f)
+                logger.info(f"Loaded CEO embedding from {self.ceo_embedding_path}")
+                logger.info(f"  Embedding shape: {self.ceo_embedding.shape if hasattr(self.ceo_embedding, 'shape') else 'unknown'}")
+                logger.info(f"  File size: {self.ceo_embedding_path.stat().st_size} bytes")
+                logger.info(f"  Last modified: {self.ceo_embedding_path.stat().st_mtime}")
+            else:
+                logger.warning(f"CEO embedding file not found: {self.ceo_embedding_path}")
+                self.ceo_embedding = None
         except Exception as e:
             logger.error(f"Failed to load CEO embedding: {e}")
+            import traceback
+            traceback.print_exc()
             self.ceo_embedding = None
     
     def _save_ceo_embedding(self):
         """Save CEO voice embedding to disk."""
         try:
-            with open(self.ceo_embedding_path, 'wb') as f:
+            # Ensure directory exists
+            self.embedding_dir.mkdir(exist_ok=True)
+            
+            # Write to temp file first, then rename (atomic operation)
+            temp_path = self.ceo_embedding_path.with_suffix('.tmp')
+            with open(temp_path, 'wb') as f:
                 pickle.dump(self.ceo_embedding, f)
+            
+            # Atomic rename to prevent partial writes
+            temp_path.replace(self.ceo_embedding_path)
+            
             logger.info(f"Saved CEO embedding to {self.ceo_embedding_path}")
+            logger.info(f"  Embedding shape: {self.ceo_embedding.shape}")
+            logger.info(f"  File size: {self.ceo_embedding_path.stat().st_size} bytes")
         except Exception as e:
             logger.error(f"Failed to save CEO embedding: {e}")
+            import traceback
+            traceback.print_exc()
     
     def extract_features(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """
@@ -168,15 +191,23 @@ class VoiceAuthenticator:
                 return False
             
             # Extract features
-            logger.info("Extracting voice features for enrollment...")
+            logger.info(f"Extracting voice features from {len(audio)/sample_rate:.2f}s audio...")
             features = self.extract_features(audio, sample_rate)
+            logger.info(f"Extracted features for enrollment: shape={features.shape}, mean={np.mean(features):.4f}")
             
             # Save as CEO embedding
             self.ceo_embedding = features
             self._save_ceo_embedding()
             
-            logger.info("✓ CEO voice enrolled successfully")
-            return True
+            # Force reload to verify it was saved correctly
+            self._load_ceo_embedding()
+            
+            if self.ceo_embedding is not None and self.ceo_embedding.shape[0] == features.shape[0]:
+                logger.info("✓ CEO voice enrolled and verified successfully")
+                return True
+            else:
+                logger.error("✗ Enrollment verification failed - embedding not saved correctly")
+                return False
             
         except Exception as e:
             logger.error(f"Enrollment failed: {e}")
@@ -195,6 +226,10 @@ class VoiceAuthenticator:
         Returns:
             Tuple of (is_ceo, similarity_score)
         """
+        # Force reload of CEO embedding to avoid cache issues
+        logger.info("Reloading CEO embedding from disk to ensure fresh data...")
+        self._load_ceo_embedding()
+        
         if self.ceo_embedding is None:
             logger.warning("CEO voice not enrolled")
             return False, 0.0
