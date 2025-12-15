@@ -207,7 +207,9 @@ class VoiceAuthenticator:
                 return False, 0.0
             
             # Extract features
+            logger.info(f"Extracting features from {len(audio)/sample_rate:.2f}s audio...")
             features = self.extract_features(audio, sample_rate)
+            logger.info(f"Extracted features: shape={features.shape}, mean={np.mean(features):.4f}, std={np.std(features):.4f}")
             
             # CRITICAL: Check feature dimension compatibility
             if features.shape[0] != self.ceo_embedding.shape[0]:
@@ -217,22 +219,44 @@ class VoiceAuthenticator:
                 logger.error(f"  Solution: Re-enroll the CEO voice to update the embedding.")
                 return False, 0.0
             
+            logger.info(f"CEO embedding: shape={self.ceo_embedding.shape}, mean={np.mean(self.ceo_embedding):.4f}, std={np.std(self.ceo_embedding):.4f}")
+            
             # Multiple similarity metrics for better accuracy
             
+            logger.info("Computing similarity metrics...")
+            
             # 1. Cosine similarity (angle between vectors)
-            cos_sim = cosine_similarity(
-                features.reshape(1, -1),
-                self.ceo_embedding.reshape(1, -1)
-            )[0][0]
+            try:
+                cos_sim = cosine_similarity(
+                    features.reshape(1, -1),
+                    self.ceo_embedding.reshape(1, -1)
+                )[0][0]
+                logger.info(f"Cosine similarity computed: {cos_sim:.4f}")
+            except Exception as e:
+                logger.error(f"Cosine similarity failed: {e}")
+                cos_sim = 0.0
             
             # 2. Euclidean distance (normalized inverse)
-            euclidean_dist = np.linalg.norm(features - self.ceo_embedding)
-            max_dist = np.sqrt(len(features))  # Maximum possible distance
-            euclidean_sim = 1 - (euclidean_dist / max_dist)
+            try:
+                euclidean_dist = np.linalg.norm(features - self.ceo_embedding)
+                max_dist = np.sqrt(len(features))  # Maximum possible distance
+                euclidean_sim = 1 - (euclidean_dist / max_dist)
+                logger.info(f"Euclidean similarity computed: {euclidean_sim:.4f}")
+            except Exception as e:
+                logger.error(f"Euclidean similarity failed: {e}")
+                euclidean_sim = 0.0
             
             # 3. Pearson correlation
-            pearson_corr = np.corrcoef(features, self.ceo_embedding)[0, 1]
-            pearson_sim = (pearson_corr + 1) / 2  # Convert to 0-1 range
+            try:
+                pearson_corr = np.corrcoef(features, self.ceo_embedding)[0, 1]
+                if np.isnan(pearson_corr):
+                    logger.warning("Pearson correlation is NaN, setting to 0")
+                    pearson_corr = 0.0
+                pearson_sim = (pearson_corr + 1) / 2  # Convert to 0-1 range
+                logger.info(f"Pearson similarity computed: {pearson_sim:.4f}")
+            except Exception as e:
+                logger.error(f"Pearson correlation failed: {e}")
+                pearson_sim = 0.0
             
             # Weighted combination of similarities
             similarity = (
