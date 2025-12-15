@@ -117,26 +117,28 @@ class VoiceAuthenticator:
             
             # Combine all features
             all_features = np.vstack([
-                mfccs,
-                mfcc_delta,
-                mfcc_delta2,
-                spectral_centroids,
-                spectral_rolloff,
-                spectral_bandwidth,
-                zcr,
-                chroma,
-                mel_spectrogram_db[:20]  # First 20 mel bands
-            ])
+                mfccs,                      # 20 coefficients
+                mfcc_delta,                 # 20 coefficients
+                mfcc_delta2,                # 20 coefficients
+                spectral_centroids,         # 1 feature
+                spectral_rolloff,           # 1 feature
+                spectral_bandwidth,         # 1 feature
+                zcr,                        # 1 feature
+                chroma,                     # 12 features
+                mel_spectrogram_db[:20]     # 20 mel bands
+            ])  # Total: 96 features across time
             
-            # Compute statistical moments across time
-            mean = np.mean(all_features, axis=1)
-            std = np.std(all_features, axis=1)
-            median = np.median(all_features, axis=1)
-            q1 = np.percentile(all_features, 25, axis=1)
-            q3 = np.percentile(all_features, 75, axis=1)
+            # Compute statistical moments across time (always 96 * 5 = 480 features)
+            mean = np.mean(all_features, axis=1)      # 96 features
+            std = np.std(all_features, axis=1)        # 96 features
+            median = np.median(all_features, axis=1)  # 96 features
+            q1 = np.percentile(all_features, 25, axis=1)  # 96 features
+            q3 = np.percentile(all_features, 75, axis=1)  # 96 features
             
-            # Combine statistics
+            # Combine statistics (should always be 480 features)
             feature_vector = np.concatenate([mean, std, median, q1, q3])
+            
+            logger.debug(f"Feature vector shape: {feature_vector.shape}")
             
             # Robust normalization
             feature_vector = (feature_vector - np.mean(feature_vector)) / (np.std(feature_vector) + 1e-8)
@@ -206,6 +208,14 @@ class VoiceAuthenticator:
             
             # Extract features
             features = self.extract_features(audio, sample_rate)
+            
+            # CRITICAL: Check feature dimension compatibility
+            if features.shape[0] != self.ceo_embedding.shape[0]:
+                logger.error(f"Feature dimension mismatch!")
+                logger.error(f"  Current features: {features.shape[0]} dimensions")
+                logger.error(f"  Enrolled CEO: {self.ceo_embedding.shape[0]} dimensions")
+                logger.error(f"  Solution: Re-enroll the CEO voice to update the embedding.")
+                return False, 0.0
             
             # Multiple similarity metrics for better accuracy
             
